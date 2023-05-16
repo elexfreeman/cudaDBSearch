@@ -1,1 +1,4 @@
 # cudaDBSearch
+
+  make
+  make run
