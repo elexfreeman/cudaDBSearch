@@ -1,0 +1,377 @@
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <time.h>
+
+#define ITTER_COUNT 10
+#define DEVICE_NUM 0
+#define PRODUCT_SIZE 10
+
+struct GpuData
+{
+  int* out;
+  int* productId;
+  int* productCategoryId;
+  int* productPrice;
+  int* categoryIdSize;
+  int* productSize;
+};
+
+
+//product in categoryIdList and price >= 100
+__global__ void findProductCategoryKernel(
+  int* out,
+  int* productId,
+  int* productCategoryId,
+  int* productPrice,
+  int* categoryIdSize,
+  int* productSize
+)
+{
+  // 2048
+  int itterCount =(*productSize) / 1024;
+  //int x = blockIdx.x * threadIdx.x;
+  int x = threadIdx.x;
+  int innerIter = x*itterCount;
+
+  for(int i=innerIter; i<itterCount; i++)
+  {
+    if(i== (*productSize))
+    {
+      break;
+    }
+
+    out[i] = 0;
+
+    for (int k = 0; k < (*categoryIdSize); k++)
+    {
+      if (productId[i] == productCategoryId[k])
+      {
+        out[i] = 1;
+        break;
+      }
+    }
+
+    if (out[i] >= 0)
+    {
+      if (productPrice[i] < 100)
+      {
+        out[i] = 0;
+      }
+    }
+
+  }
+}
+
+int randRange(int lower, int upper)
+{
+  return (rand() % (upper - lower + 1)) + lower;
+}
+
+
+// Helper function for using CUDA to add vectors in parallel.
+int searchCuda(int productSize, struct GpuData * gpuData)
+{
+  cudaError_t cudaStatus;
+  clock_t toc;
+  clock_t tic;
+  printf("cudaRun \n");
+
+  tic = clock();
+
+  if (productSize<=1024 )
+  {
+    // Launch a kernel on the GPU with one thread for each element.
+    findProductCategoryKernel <<<1, productSize >>> (
+      gpuData->out,
+      gpuData->productId,
+      gpuData->productCategoryId,
+      gpuData->productPrice,
+      gpuData->categoryIdSize,
+      gpuData->productSize
+    );
+  }
+  else
+  {
+    // Launch a kernel on the GPU with one thread for each element.
+    findProductCategoryKernel <<<1, 1024 >>> (
+      gpuData->out,
+      gpuData->productId,
+      gpuData->productCategoryId,
+      gpuData->productPrice,
+      gpuData->categoryIdSize,
+      gpuData->productSize
+    );
+  }
+  toc = clock();
+  printf("Elapsed GPU: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+
+
+  // Check for any errors launching the kernel
+  cudaStatus = cudaGetLastError();
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+    return 1;
+  }
+
+  // cudaDeviceSynchronize waits for the kernel to finish, and returns
+  // any errors encountered during the launch.
+  cudaStatus = cudaDeviceSynchronize();
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+    return 1;
+  }
+
+  return 0;
+}
+
+void findProductCategoryCpu(
+  int* out,
+  int* productId,
+  int* productCategoryId,
+  int* productPrice,
+  int* categoryIdSize,
+  int* productSize
+)
+{
+  for(int i=0; i< (*productSize); i++)
+  {
+    out[i] = 0;
+    for (int k = 0; k < (*categoryIdSize); k++)
+    {
+      if (productId[i] == productCategoryId[k])
+      {
+        out[i] = 1;
+        break;
+      }
+    }
+
+    if (out[i] >= 0)
+    {
+      if (productPrice[i] < 100)
+      {
+        out[i] = 0;
+      }
+    }
+  }
+}
+
+int initGpuMemory(struct GpuData* cpuData, struct GpuData* gpuData)
+{
+  cudaError_t cudaStatus;
+  // Choose which GPU to run on, change this on a multi-GPU system.
+  cudaStatus = cudaSetDevice(DEVICE_NUM);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+    return 1;
+  }
+
+  printf("cudaMalloc \n");
+  cudaStatus = cudaMalloc((void**)&gpuData->productId, (*cpuData->productSize) * sizeof(int));
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMalloc failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMalloc((void**)&gpuData->productId, (*cpuData->productSize) * sizeof(int));
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMalloc failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMalloc((void**)&gpuData->productPrice, (*cpuData->productSize) * sizeof(int));
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMalloc failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMalloc((void**)&gpuData->productCategoryId, (*cpuData->categoryIdSize) * sizeof(int));
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMalloc failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMalloc((void**)&cpuData->categoryIdSize, sizeof(int));
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMalloc failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMalloc((void**)&cpuData->productSize, sizeof(int));
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMalloc failed!");
+    return 1;
+  }
+
+  printf("cudaMemcpy \n");
+  // Copy input vectors from host memory to GPU buffers.
+  cudaStatus = cudaMemcpy(gpuData->productId, cpuData->productId, (*cpuData->productSize) * sizeof(int), cudaMemcpyHostToDevice);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMemcpy failed!");
+    return 1;
+  }
+  fprintf(stdout, "1 \n");
+
+  cudaStatus = cudaMemcpy(gpuData->productPrice, cpuData->productPrice, (*cpuData->productSize) * sizeof(int), cudaMemcpyHostToDevice);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMemcpy failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMemcpy(gpuData->productCategoryId, cpuData->productCategoryId, (*cpuData->categoryIdSize) * sizeof(int), cudaMemcpyHostToDevice);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMemcpy failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMemcpy(gpuData->categoryIdSize, cpuData->categoryIdSize, sizeof(int), cudaMemcpyHostToDevice);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMemcpy failed!");
+    return 1;
+  }
+
+  cudaStatus = cudaMemcpy(gpuData->productSize, cpuData->productSize, sizeof(int), cudaMemcpyHostToDevice);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMemcpy failed!");
+    return 1;
+  }
+
+  return 0;
+}
+
+void freeGpuMemory(struct GpuData* gpuData)
+{
+  cudaFree(gpuData->out);
+  cudaFree(gpuData->productId);
+  cudaFree(gpuData->productCategoryId);
+  cudaFree(gpuData->productPrice);
+  cudaFree(gpuData->categoryIdSize);
+
+}
+
+struct GpuData* initCpuData(int productSize, int categoryIdSize)
+{
+  struct GpuData* data = (struct GpuData*)malloc(sizeof(struct GpuData));
+  data->out = (int*)malloc( productSize* sizeof(int));;
+  data->productId = (int*)malloc(productSize * sizeof(int));;
+  data->productCategoryId = (int*)malloc(categoryIdSize * sizeof(int));;
+  data->productPrice = (int*)malloc(productSize * sizeof(int));;
+  data->categoryIdSize = (int*)malloc(sizeof(int));
+  data->productSize  = (int*)malloc(sizeof(int));
+
+  *data->productSize = productSize;
+  *data->categoryIdSize = categoryIdSize;
+
+  for (int k = 0; k < (*data->productSize); k++)
+  {
+    data->productId[k] = randRange(1, 10);
+    data->productPrice[k] = randRange(200, 1000);
+  }
+  data->productCategoryId[0] = 2;
+  data->productCategoryId[1] = 6;
+  data->productCategoryId[2] = 3;
+
+  return data;
+}
+
+int getDataFromGpuOut(struct GpuData* gpuData, int productSize, int* out)
+{
+  cudaError_t cudaStatus;
+  // Copy output vector from GPU buffer to host memory.
+  cudaStatus = cudaMemcpy(out, gpuData->out,  productSize* sizeof(int), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess)
+  {
+    fprintf(stderr, "cudaMemcpy failed!");
+    return 1;
+  }
+  return 0;
+}
+
+void freeCpuData(struct GpuData* data)
+{
+  free(data->productCategoryId);
+  free(data->productId);
+  free(data->productPrice);
+  free(data->out);
+  free(data->categoryIdSize);
+  free(data->productSize);
+  free(data);
+}
+
+void printProductId(struct GpuData* cpuData)
+{
+  for(int k=0; k< (*cpuData->productSize); k++)
+  {
+    fprintf(stdout, "%d ", cpuData->productId[k]);
+  }
+}
+
+int main()
+{
+  int status = 0;
+  clock_t tic, toc;
+
+  struct GpuData* cpuData = initCpuData(PRODUCT_SIZE, 3);
+  fprintf(stdout, "initCpuData \n");
+
+  printProductId(cpuData);
+
+  struct GpuData* gpuData =(struct GpuData*)malloc(sizeof(GpuData));
+
+  status = initGpuMemory(cpuData, gpuData);
+  if(status == 1) return 1;
+  fprintf(stdout, "initGpuMemory \n");
+
+//  tic = clock();
+//  status =  searchCuda(PRODUCT_SIZE, gpuData);
+//  if(status == 1) return 1;
+//  fprintf(stdout, "searchCuda \n");
+//
+//  status = getDataFromGpuOut(gpuData, PRODUCT_SIZE, cpuData->out);
+//  if(status == 1) return 1;
+//
+//  toc = clock();
+//  printf("Elapsed GPU with memory: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+//
+//  status = searchCuda(PRODUCT_SIZE, gpuData);
+//  if (status ==1)
+//  {
+//    fprintf(stderr, "addWithCuda failed!");
+//    return 1;
+//  }
+//####
+
+//  tic = clock();
+//  findProductCategoryCpu(
+//    out,
+//    productId,
+//    productCategoryId,
+//    productPrice,
+//    categoryIdSize,
+//    productSize
+//  );
+//  toc = clock();
+//  printf("Elapsed CPU: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+
+  freeGpuMemory(gpuData);
+  free(gpuData);
+  freeCpuData(cpuData);
+  return 0;
+}
