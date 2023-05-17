@@ -18,9 +18,10 @@ int main()
   printf("count %d \n", logicData->count);
 
   logicAddInt(logicData, "FIELD", L_EQUAL, 10);
-  printf("count %d \n", logicData->count);
+  logicAddMiddle(logicData, L_AND);
+  logicAddInt(logicData, "P1", L_EQUAL, 33);
 
-
+  logicPrint(logicData);
   logicFree(logicData);
 
   return 0;
