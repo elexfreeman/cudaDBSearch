@@ -3,12 +3,10 @@
 #include <string.h>
 #include <regex.h>
 #include <cuda.h>
-#include "./includes/logicData.cu"
+#include "./includes/env.h"
+#include "./includes/logic_data.cu"
 
 #define SIZE 3
-
-
-
 
 // Main function
 int main()
@@ -20,6 +18,8 @@ int main()
   logicAddInt(logicData, "FIELD", L_EQUAL, 10);
   logicAddMiddle(logicData, L_AND);
   logicAddInt(logicData, "P1", L_EQUAL, 33);
+  logicAddMiddle(logicData, L_OR);
+  logicAddString(logicData, "P2", L_EQUAL, "char data");
 
   logicPrint(logicData);
   logicFree(logicData);
