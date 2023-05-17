@@ -7,9 +7,29 @@
 
 #include "./env.h"
 /*
-product: [
+__global__ void mallocTest()
+{
+    char* ptr = (char*)malloc(123);
+    printf(“Thread %d got pointer: %p\n”, threadIdx.x, ptr);
+    free(ptr);
+}
+
+void main()
+{
+    // Set a heap size of 128 megabytes. Note that this must
+    // be done before any kernel is launched.
+    cudaThreadSetLimit(cudaLimitMallocHeapSize, 128*1024*1024);
+    mallocTest<<<1, 5>>>();
+    cudaThreadSynchronize();
+}
+*/
+/*
+SearchData* searchData : [
   {
-    price: 100,
+    price: {
+      valueType: 'int',
+      data: 33,
+    },
     tags: ['supper', 'versal', 'hateyou'],
   },
   {
@@ -30,29 +50,20 @@ product: [
 */
 
 
-/*
-__global__ void mallocTest()
-{
-    char* ptr = (char*)malloc(123);
-    printf(“Thread %d got pointer: %p\n”, threadIdx.x, ptr);
-    free(ptr);
-}
-
-void main()
-{
-    // Set a heap size of 128 megabytes. Note that this must
-    // be done before any kernel is launched.
-    cudaThreadSetLimit(cudaLimitMallocHeapSize, 128*1024*1024);
-    mallocTest<<<1, 5>>>();
-    cudaThreadSynchronize();
-}
-*/
 
 typedef struct
 {
+  char* name;
   int valueType;
   void* data;
 } SearchDataItem;
+
+
+typedef struct
+{
+  SearchDataItem* dataItem;
+  int count;
+} SearchData;
 
 
 #endif

@@ -8,6 +8,7 @@
 
 #define SIZE 3
 
+// NVIDIA P106-100
 // Main function
 int main()
 {
