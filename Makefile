@@ -272,8 +272,9 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(LDFLAGS))
 ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
-INCLUDES  := -I./src/includes
-LIBRARIES :=
+INCLUDES  := -I./src/includes,./src/libs/json-c
+
+LIBRARIES := -ljson-c
 
 ################################################################################
 
@@ -307,7 +308,12 @@ EXEC ?= @echo "[@]"
 endif
 
 ################################################################################
-
+#JSON_C_DIR=./src/libs/json-c
+#JSONFLAGS := -I$(JSON_C_DIR)
+#JSONFLAGS := -I$(JSON_C_DIR)
+# Or to use lines like: #include <json-c/json_object.h>
+#CFLAGS += -I$(JSON_C_DIR)/include
+#LDFLAGS+= -L$(JSON_C_DIR)/lib -ljson-c
 # Target rules
 all: build
 
@@ -331,10 +337,23 @@ main: main.o
 run: build
 	$(EXEC) ./main
 
-testrun: build
+
+tests_run.o:./tests/tests_run.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+
+tests_run: tests_run.o
+	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
+	$(EXEC) mkdir -p ./bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
+	$(EXEC) cp $@ ./bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
+
+tests_build: tests_run
+
+testrun: tests_build
+	$(EXEC) ./tests_run
 
 clean:
 	rm -f main main.o
+	rm -f tests_run tests_run.o
 	rm -rf ./bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/main
 
 clobber: clean

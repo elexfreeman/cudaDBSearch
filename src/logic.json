@@ -1,31 +1,30 @@
-{
- "LOGIC": "k1=5 OR k1=9 OR k2='string'",
- "logicItem": {
+[
+ {
     "KEY": 1,
     "L": "=",
     "VAL": 5,
     "TYPE": "n"
   },
- "logicItem": {
+ {
     "KEY": -1,
     "L": "OR",
     "VAL": -1 
   },
-  "logicItem": {
+ {
     "KEY": 1,
     "L": "=",
     "VAL": 9,
     "TYPE": "n"
   },
- "logicItem": {
+ {
     "KEY": -1,
     "L": "OR",
     "VAL": -1 
   },
-  "logicItem": {
+ {
     "KEY": 2,
     "L": "=",
     "VAL": "string",
     "TYPE": "s"
   },
-}
+]
