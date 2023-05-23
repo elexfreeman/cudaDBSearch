@@ -5,6 +5,8 @@
 #include <cuda.h>
 #include "../src/includes/env.h"
 #include "../src/includes/logic_data.cu"
+#include "./llist_test.cu"
+#include "./search_data_test.cu"
 
 
 #define SIZE 3
@@ -26,6 +28,8 @@ int main()
   logicPrint(logicData);
   logicFree(logicData);
 
+  llist_test();
+  searchData_test();
   return 0;
 }
 
