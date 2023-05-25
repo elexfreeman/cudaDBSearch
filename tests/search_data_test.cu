@@ -19,8 +19,6 @@ int searchData_test()
   searchDataFree(searchData);
 
   printf("============ END ================ \n");
-
-
   return 0;
 }
 

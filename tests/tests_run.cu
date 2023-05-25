@@ -7,6 +7,8 @@
 #include "../src/includes/logic_data.cu"
 #include "./llist_test.cu"
 #include "./search_data_test.cu"
+#include "./logic_data_test.cu"
+#include "./json_search_data_test.cu"
 
 
 #define SIZE 3
@@ -15,21 +17,10 @@
 // Main function
 int main()
 {
-  LogicData* logicData = logicInit();
-  printf("123 <> \n");
-  printf("count %d \n", logicData->count);
-
-  logicAddInt(logicData, "FIELD", L_EQUAL, 10);
-  logicAddMiddle(logicData, L_AND);
-  logicAddInt(logicData, "P1", L_EQUAL, 33);
-  logicAddMiddle(logicData, L_OR);
-  logicAddString(logicData, "P2", L_EQUAL, "char data");
-
-  logicPrint(logicData);
-  logicFree(logicData);
-
   llist_test();
   searchData_test();
+  logicData_test();
+  json_search_data_test();
   return 0;
 }
 

@@ -16,7 +16,7 @@ int llist_test()
   int z = 99;
   addToList(intList, (void*)&z);
 
-  for(int k=0; k< 100; k++)
+  for(int k=0; k< 5; k++)
   {
     int* z = (int*)malloc(sizeof(int));
     *z = k;

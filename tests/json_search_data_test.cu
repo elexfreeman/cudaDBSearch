@@ -3,8 +3,8 @@
 #include <string.h>
 #include <regex.h>
 #include <cuda.h>
-#include "./includes/env.h"
-#include "./includes/logic_data.cu"
+#include "../src/includes/env.h"
+#include "../src/includes/logic_data.cu"
 #include <json-c/json.h>
 
 #define SIZE 3
@@ -80,12 +80,12 @@ void parceDataItem(struct json_object *obj)
 
 // NVIDIA P106-100
 // Main function
-int main()
+int json_search_data_test()
 {
 
 // Declare a variable to store a pointer to the file.
 
-  char* filename =strdup("./src/data.json");
+  char* filename = strdup("./src/data.json");
   FILE* file = fopen(filename, "r");
   if (file == NULL)
   {
@@ -126,13 +126,16 @@ int main()
 
 
   json_object *root = json_tokener_parse(content);
+
   printf(" >>>>>>>>>>>>>>>>>>>>>> \n");
   doit(root);
 
 
   // Cleanup
+  json_object_put(root);
   free(content);
   fclose(file);
   return 0;
 }
+
 
